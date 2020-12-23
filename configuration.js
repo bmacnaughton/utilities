@@ -48,6 +48,7 @@ async function get (options = {}) {
     test1: {location: 'c', type: 'i', validator: {yes: 1, no: 0}},
     test2: {location: 'c', type: 's', validator: ['either', 'this', 'or', 'that']},
   };
+  const prefix = options.prefix || '';
 
   // what get returns
   const results = {
@@ -69,13 +70,27 @@ async function get (options = {}) {
     });
   }
 
-  const prefix = 'AOLP_';
+  if (options.defaults) {
+    const typeMap = {s: 'string', b: 'boolean', i: 'number', f: 'number'};
+    for (const k in options.defaults) {
+      if (!(k in configOptions)) {
+        results.warnings.push(`default supplied for unknown option ${k}`);
+        continue;
+      }
+      if (typeMap[configOptions[k].type] !== typeof options.defaults[k]) {
+        const type = typeMap[configOptions[k].type];
+        results.warnings.push(`default ${options.defaults[k]} for ${k} must be ${type}`);
+        continue;
+      }
 
+      configOptions[k].default = options.defaults[k];
+    }
+  }
   const envInfo = await setConfigDefaultsFromEnv(configOptions, prefix);
   copyInfo(envInfo);
 
-  const {argv, args, minimistOptions, cmdInfo} = parseCommandLine(configOptions, prefix, options);
-  copyInfo(cmdInfo);
+  const {argv, args, minimistOptions, unknowns} = parseCommandLine(configOptions, prefix, options);
+  copyInfo({unknowns});
 
   const result = await validateAndTransform(args, configOptions, results, options);
 
@@ -227,23 +242,24 @@ function parseCommandLine (settings, prefix, options = {}) {
   // get rid of node and the main file name
   const argv = process.argv.slice(2);
 
+  const mmOptions = {unknown: checkUnknown, allowObjectForm: options.allowObjectForm};
   // keep track of unknowns seen to better handle single dash layer, -layer.
   // minimist interprets single dash as a set of single letter options, so
   // '-l' is valid but 'a', 'y', 'e', and 'r' are not, so checkUnknowns gets
   // called 4 times with '-layer'. it's kind of a pain that minimist doesn't
   // allow a validation/transformation function.
-  const minimistOptions = makeMinimistOptions(settings, {unknown: checkUnknown2});
+  const minimistOptions = makeMinimistOptions(settings, mmOptions);
 
   const unknowns = [];
   const unknownsSeen = [];
-  function checkUnknown2 (unknownArg) {
+  function checkUnknown (unknownArg) {
     // accept all non-option arguments
     if (unknownArg[0] !== '-') return true;
     // ignore a single dash
     if (unknownArg.length === 1) return false;
 
     const unknown = unknownArg.slice(unknownArg[1] === '-' ? 2 : 1);
-    if (unknown in settings) {
+    if (unknown in settings && options.allowObjectForm) {
       return true;
     }
 
@@ -379,7 +395,7 @@ async function convert (key, value, type) {
   }
   if (type === 'b') {
     if (typeof value === 'string') {
-      return ['1', 'true', 't', 'yes', 'y', 'on'].indexOf(value.toLowerCase()) >= 0;
+      return ['1', 'true', 't', 'yes', 'y', 'on', ''].indexOf(value.toLowerCase()) >= 0;
     }
     return !!value;
   }
@@ -448,7 +464,7 @@ function makeMinimistOptions (settings, options = {}) {
       alias[opt] = setting.alias;
     }
     // allow the object form as an alias for the kebab form
-    if (opt !== k) {
+    if (options.allowObjectForm && opt !== k) {
       if (!alias[opt]) {
         alias[opt] = k;
       } else if (Array.isArray(alias[opt])) {
