@@ -1,3 +1,5 @@
+// todo - track aliases to make sure no conflicts
+
 //
 // location: (e)nvironment, (c)md-line, (b)oth, (o)mit - when both the cmd-line has precedence.
 // type: (s)tring, (i)nteger, (f)loat, (b)oolean, object {valid: value, valid2: value}, function
