@@ -1,3 +1,5 @@
+'use strict';
+
 // https://stackoverflow.com/questions/4459928/how-to-deep-clone-in-javascript
 function clone (obj, hash = new WeakMap()) {
   if (Object(obj) !== obj) return obj;      // primitives
