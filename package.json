@@ -1,0 +1,26 @@
+{
+  "name": "utilities",
+  "version": "1.0.0",
+  "description": "a standard library of sorts",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bmacnaughton/utilities.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bmacnaughton/utilities/issues"
+  },
+  "homepage": "https://github.com/bmacnaughton/utilities#readme",
+  "devDependencies": {
+    "eslint": "^7.32.0"
+  }
+}
