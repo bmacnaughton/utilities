@@ -1,6 +1,7 @@
+'use strict';
 
 class Debounce {
-  constructor (fn, options = {}) {
+  constructor(fn, options = {}) {
     this.fn = fn;
     this.deltaT = 'deltaTime' in options ? options.deltaTime : 5000;
     this.deltaC = 'deltaCount' in options ? options.deltaCount : 100;
@@ -14,18 +15,23 @@ class Debounce {
 
   }
 
-  execute (...args) {
+  execute(...args) {
     this.count += 1;
     const now = Date.now();
     // has the count of errors exceeded the delta limit or the time window been exceeded?
     if ((this.count - this.lastCount) >= this.deltaC || (now - this.lastTime) > this.deltaT) {
       this.lastCount = this.count;
       this.lastTime = now;
-      return this.fn(...args);
+      if (typeof args[0] === 'string' && this.showDelta) {
+        args[0] = '[' + this.count + ']' + args[0];
+      }
+
+      return this.fn.call(this.this, ...args);
     }
 
     return undefined;
   }
 }
 
-module.exports = Debounce
+module.exports = Debounce;
+

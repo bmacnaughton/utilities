@@ -1,3 +1,4 @@
+'use strict';
 // todo - track aliases to make sure no conflicts
 
 //
@@ -25,7 +26,7 @@ const awsRegions = require('./aws-regions');
 // get the configuration from any combination of env vars and command line
 // arguments. command line options override environment variables.
 //
-async function get (options = {}) {
+async function get(options = {}) {
   const configOptions = {
     layer: {location: 'b', alias: ['l', 'LayerName'], type: 's', required: true, allow0: true},
     targetRegions: {location: 'b', alias: 'tr', type: 's', required: true, validator: validateRegions},
@@ -62,7 +63,7 @@ async function get (options = {}) {
     debuggings: [],
   };
   const infoKeys = Object.keys(results).filter(k => Array.isArray(results[k]));
-  function copyInfo (info) {
+  function copyInfo(info) {
     if (typeof info !== 'object') return;
     // if this info has a result key concatenate it.
     infoKeys.forEach(k => {
@@ -113,7 +114,7 @@ async function get (options = {}) {
 //const ex = 's3://ao.lambda.bruce/node/appoptics-apm-8.1.0-lambda-17-layer';
 const s3re = /^s3:\/\/(?<Bucket>[^\/]+)\/(?<Key>.+)$/;
 
-async function validateRegions (option, arg) {
+async function validateRegions(option, arg) {
   // if the arg was provided more than once minimist makes it an array.
   if (Array.isArray(arg)) {
     return new Error(`may only be used once "${arg.join('", "')}"`);
@@ -134,7 +135,7 @@ async function validateRegions (option, arg) {
   return pieces.join(',');
 }
 
-async function validateS3Root (option, arg) {
+async function validateS3Root(option, arg) {
   if (Array.isArray(arg)) {
     return new Error(`may only be used once "${arg.join('", "')}"`);
   }
@@ -148,7 +149,7 @@ async function validateS3Root (option, arg) {
   return arg;
 }
 
-async function validateList (option, arg) {
+async function validateList(option, arg) {
   if (typeof arg !== 'string') {
     return new Error(`${option} requires a string argument`);
   }
@@ -159,7 +160,7 @@ async function validateList (option, arg) {
 // validates action=principal and constructs StatementId.
 // TODO BAM move statement ID construction out of here.
 //
-async function validatePermission (option, args) {
+async function validatePermission(option, args) {
   if (!Array.isArray(args)) {
     args = [args];
   }
@@ -190,7 +191,7 @@ async function validatePermission (option, args) {
 //
 // read the environment variables and use them to set default values in settings.
 //
-async function setConfigDefaultsFromEnv (settings, prefix) {
+async function setConfigDefaultsFromEnv(settings, prefix) {
   const warnings = [];
   const debuggings = [];
 
@@ -240,7 +241,7 @@ async function setConfigDefaultsFromEnv (settings, prefix) {
 //
 // use minimist to parse the command line
 //
-function parseCommandLine (settings, prefix, options = {}) {
+function parseCommandLine(settings, prefix, options = {}) {
   // get rid of node and the main file name
   const argv = process.argv.slice(2);
 
@@ -254,7 +255,7 @@ function parseCommandLine (settings, prefix, options = {}) {
 
   const unknowns = [];
   const unknownsSeen = [];
-  function checkUnknown (unknownArg) {
+  function checkUnknown(unknownArg) {
     // accept all non-option arguments
     if (unknownArg[0] !== '-') return true;
     // ignore a single dash
@@ -286,7 +287,7 @@ function parseCommandLine (settings, prefix, options = {}) {
 //
 // examine each value in args
 //
-async function validateAndTransform (args, settings, results, options) {
+async function validateAndTransform(args, settings, results, options) {
   const {errors, fatals} = results;
   // copy the values from minimist to settings. these incorporate any env vars
   // that were already set because they were set as defaults for minimist.
@@ -384,7 +385,7 @@ async function validateAndTransform (args, settings, results, options) {
 //================================================================
 // utility functions
 //================================================================
-async function convert (key, value, type) {
+async function convert(key, value, type) {
   if (type === 's') {
     return `${value}`;
   }
@@ -418,23 +419,21 @@ async function convert (key, value, type) {
 }
 
 // take a string of the form oneTwoThree and convert it ONE_TWO_THREE
-function objectToEnvForm (s) {
+function objectToEnvForm(s) {
   return s.replace(/([A-Z])/g, $1 => {
     return '_' + $1;
-  }).toUpperCase()
+  }).toUpperCase();
 }
 
 // take a string of the form one-two-three and convert it to oneTwoThree
 //function kebabToObjectForm (s) {
 //  return s.replace(/([a-z])-([a-z])/g, ($m, $1, $2) => $1 + $2.toUpperCase());
-//}
-
 // take a string of the form oneTwoThree and convert it to one-two-three
-function objectToKebabForm (s) {
+function objectToKebabForm(s) {
   return s.replace(/([A-Z])/g, $1 => '-' + $1.toLowerCase());
 }
 
-function makeMinimistOptions (settings, options = {}) {
+function makeMinimistOptions(settings, options = {}) {
   const string = [];
   const boolean = [];
   const alias = {};
@@ -483,4 +482,4 @@ function makeMinimistOptions (settings, options = {}) {
 
 module.exports = {
   get,
-}
+};
