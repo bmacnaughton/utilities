@@ -1,3 +1,5 @@
+'use strict';
+
 // Generate all combinations of array elements
 // https://stackoverflow.com/questions/15298912/javascript-generating-combinations-from-n-arrays-with-m-elements
 //

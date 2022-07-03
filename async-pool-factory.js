@@ -41,13 +41,13 @@ function asyncPoolFactory(n) {
   // provide a function the user can call to wait on any unsettled promises
   // after they have exhausted their need to call xq(). this would be used when
   // there is a list of tasks to complete and the end of it has been reached.
-  xq.done = async() => Promise.all(promises);
+  xq.done = async () => Promise.all(promises);
 
   // return the executor
   return xq;
 }
 
-module.exports = asyncPoolFactory
+module.exports = asyncPoolFactory;
 
 //
 // how to use it
@@ -61,18 +61,19 @@ module.exports = asyncPoolFactory
 //
 
 if (require.main === module) {
+  const N = 24;
+  let n = N;
+  const time = 1000;
   async function main() {
     const done = [];
     const xq = asyncPoolFactory(10);
 
     const start = Date.now();
-
-    let n = 24;
     while (n > 0) {
       const p = new Promise(resolve => {
-        setTimeout(resolve, 1000);
+        setTimeout(resolve, time);
       });
-      await xq(() => p);
+      done.push(await xq(() => p));
       n -= 1;
     }
 
@@ -81,6 +82,7 @@ if (require.main === module) {
     return et;
   }
 
-  main().then(et => console.log(et));
+  // eslint-disable-next-line no-console
+  main().then(et => console.log(`executed ${N} timeouts of ${time}ms each in ${et}`));
 
 }

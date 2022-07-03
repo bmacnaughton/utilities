@@ -1,4 +1,4 @@
-
+'use strict';
 /*
  * bmacnaughton utilities
  */
@@ -13,6 +13,6 @@ const text = `
 - rotate - rotate an array
 - permutations - generate permutations of elements in an array
 - combinations - generate combinations of the elements of the array arguments
-`
+`;
 
 console.log(text);
