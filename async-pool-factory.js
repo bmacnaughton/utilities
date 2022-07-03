@@ -6,7 +6,7 @@
 
 /**
  * return a function that will execute up to the specified
- * number of async functions simulataneously.
+ * number of async functions simultaneously.
  *
  * @param {integer} n the number of simultaneous functions that
  * can be active
