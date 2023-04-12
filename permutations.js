@@ -61,8 +61,10 @@ if (!module.parent) {
   let r = [...gp(dOdd)];
   /* eslint-disable no-console */
   console.log(r);
-  r = [...gp(dEven)];
 
+  r = [...gp(dEven)];
   console.log(r);
 
+  r = [...gp(['n', 'o', 'd', 'e'])];
+  console.log(r.map(letters => letters.join('')));
 }

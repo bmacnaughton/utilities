@@ -25,9 +25,22 @@ function sfc32(a, b, c, d) {
   }
 }
 
-const randomMinMax = (min, max) => Math.floor(this.rand() * (max - min + 1)) + min;
+class Random {
+  constructor(seed) {
+    this.fn = getRandom(seed);
+  }
+
+  intMinMax(min, max) {
+    return Math.floor(this.fn() * (max - min + 1)) + min;
+  }
+
+  minMax(min, max) {
+    return this.fn() * (max - min) + min;
+  }
+
+}
 
 module.exports = {
-  getSeededRandomGenerator,
-  randomMinMax,
+  getRandom,
+  Random,
 };

@@ -26,10 +26,13 @@ function asyncPoolFactory(n) {
     if (!freeslots.length) {
       await Promise.race(promises);
     }
-    const slot = freeslots.splice(0, 1)[0];
+    // get the first free slot and use it for the function's promise
+    const slot = freeslots.shift();
     promises[slot] = fn()
       .then(r => {
-        // clear the promise and add that slot to the free slots list.
+        // clear the promise and add that slot to the free slots list. this leaves
+        // a hole in the promises list but it will be filled in when that slot is
+        // reused.
         delete promises[slot];
         freeslots.push(slot);
         return r;
@@ -61,28 +64,43 @@ module.exports = asyncPoolFactory;
 //
 
 if (require.main === module) {
+
   const N = 24;
   let n = N;
-  const time = 1000;
+  let totalTime = 0;
+  const minTime = 500;
+  const maxTime = 1500;
   async function main() {
     const done = [];
     const xq = asyncPoolFactory(10);
 
     const start = Date.now();
     while (n > 0) {
+      // capture actual time for each of the async functions
+      const thisTime = Date.now();
+      const time = Math.floor(Math.random() * (maxTime - minTime)) + minTime;
+
       const p = new Promise(resolve => {
-        setTimeout(resolve, time);
+        setTimeout(function() {
+          // aggregate total time spent
+          totalTime += Date.now() - thisTime;
+          resolve();
+        }, time);
       });
-      done.push(await xq(() => p));
+      done.push(await xq(() => {
+        // return the promise
+        return p;
+      }));
       n -= 1;
     }
 
+    // wait on all to complete
     await xq.done();
     const et = Date.now() - start;
     return et;
   }
 
   // eslint-disable-next-line no-console
-  main().then(et => console.log(`executed ${N} timeouts of ${time}ms each in ${et}`));
+  main().then(et => console.log(`executed ${N} timeouts totaling ${totalTime}ms in ${et}ms`));
 
 }
