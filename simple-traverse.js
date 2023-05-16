@@ -5,14 +5,20 @@ function simpleTraverse(obj, cb) {
   if (typeof obj !== 'object' || obj === null) {
     return;
   }
+
+  const history = new WeakSet();
   const path = [];
   function traverse(obj) {
-    //console.log('into traverse', obj);
-    const isArray = Array.isArray(obj);
-    for (const k in obj) {
-      if (isArray) {
-        // if it is an array, store each index as in path but don't call the
-        // callback on the index itself as they are just numeric strings.
+    // prevent endless looping on self-referential objects
+    if (history.has(obj)) {
+      return;
+    }
+    history.add(obj);
+
+    // if it's an array, put the keys in the path but don't callback on them;
+    // they're just numbers.
+    if (Array.isArray(obj)) {
+      for (const k in obj) {
         path.push(k);
         if (typeof obj[k] === 'object' && obj[k] !== null) {
           traverse(obj[k]);
@@ -20,17 +26,21 @@ function simpleTraverse(obj, cb) {
           cb(path, 'leaf', obj[k]);
         }
         path.pop();
-      } else if (typeof obj[k] === 'object' && obj[k] !== null) {
-        cb(path, 'key', k);
-        path.push(k);
-        traverse(obj[k]);
-        path.pop();
-      } else {
-        cb(path, 'key', k);
-        if (typeof obj[k] === 'string' && obj[k]) {
+      }
+    } else {
+      for (const k in obj) {
+        if (typeof obj[k] === 'object' && obj[k] !== null) {
+          cb(path, 'key', k);
           path.push(k);
-          cb(path, 'leaf', obj[k]);
+          traverse(obj[k]);
           path.pop();
+        } else {
+          cb(path, 'key', k);
+          if (typeof obj[k] === 'string' && obj[k]) {
+            path.push(k);
+            cb(path, 'leaf', obj[k]);
+            path.pop();
+          }
         }
       }
     }
@@ -54,11 +64,8 @@ function* simpleTraverseGen(obj) {
     }
     history.add(obj);
 
-    const isArray = Array.isArray(obj);
-    for (const k in obj) {
-      if (isArray) {
-        // if it is an array, store each index as in path but don't yield
-        // on the indexes themselves as they are just numeric strings.
+    if (Array.isArray(obj)) {
+      for (const k in obj) {
         path.push(k);
         if (typeof obj[k] === 'object' && obj[k] !== null) {
           yield* traverse(obj[k]);
@@ -66,14 +73,15 @@ function* simpleTraverseGen(obj) {
           yield [path, 'leaf', obj[k]];
         }
         path.pop();
-      } else if (typeof obj[k] === 'object' && obj[k] !== null) {
+      }
+    } else {
+      for (const k in obj) {
         yield [path, 'key', k];
-        path.push(k);
-        yield* traverse(obj[k]);
-        path.pop();
-      } else {
-        yield [path, 'key', k];
-        if (typeof obj[k] === 'string' && obj[k]) {
+        if (typeof obj[k] === 'object' && obj[k] !== null) {
+          path.push(k);
+          yield* traverse(obj[k]);
+          path.pop();
+        } else if (typeof obj[k] === 'string' && obj[k]) {
           path.push(k);
           yield [path, 'leaf', obj[k]];
           path.pop();
