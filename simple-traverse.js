@@ -108,7 +108,7 @@ for (const [path, type, value] of simpleTraverseGen(o1)) {
   console.log(path, type, value);
 }
 
-// worth nothing that the generator version is quite a bit slower than the
+// worth noting that the generator version is quite a bit slower than the
 // callback version. the results of simple-bench with issue-38.json:
 /*
 $ BENCH=benchmarks/traverse-gen-vs-cb.js node index.js callback
