@@ -44,7 +44,40 @@ function* makeTaggedCombinations(head, ...tail) {
   }
 }
 
+// nice interface and output
+// the argument is of the form {key1: [values, ...], key2: [values, ...], ...}
+// it returns objects of the form {key1: value, key2: value, ...}
+//
+// the number of combinations generated is equal to the multiplication of the
+// lengths of each values array. arrays of zero length are excluded
+function* makeCombinations(values) {
+  const keys = Object.keys(values);
+  const kv = [];
+  for (const k of keys) {
+    kv.push([k, values[k]]);
+  }
+  yield* _makeCombinations(...kv);
+
+  function* _makeCombinations(first, ...tail) {
+    const [key, values] = first;
+
+    const remaining = tail.length ? _makeCombinations(...tail) : [{}];
+
+    // skip empty arrays so they don't result in zero combinations.
+    if (!values.length) {
+      yield* remaining;
+    } else {
+      for (const c of remaining) {
+        for (const v of values) {
+          yield { [key]: v, ...c };
+        }
+      }
+    }
+  }
+}
+
 module.exports = {
   combinations,
   makeTaggedCombinations,
+  makeCombinations,
 };
