@@ -47,6 +47,7 @@ class TimerQueue {
 
   setNextTimeout () {
     this.next = this.timers[0].time;
+    // change to use setInterval() and then just set _repeat property!
     this.id = setTimeout(() => {
       if (this.executeExpired()) {
         // if there is at least one timer in the queue after executing those
