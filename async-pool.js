@@ -81,7 +81,7 @@ class AsyncPool {
       .then(r => {
         // clear the promise and add that slot to the free slots list. this leaves
         // a hole in the promises list but it will be filled in when that slot is
-        // reused.
+        // reused. Promise.all() and Promise.race() aren't affected by the holes.
         delete this.promises[slot];
         this.freeslots.push(slot);
         return r;
@@ -89,8 +89,19 @@ class AsyncPool {
   }
 
   // add timedXq
-  async timedXq(fn, time) {
-    throw new Error('not implemented');
+  async timedXq(fn, cb) {
+    if (!this.freeslots.length) {
+      await Promise.race(this.promises);
+    }
+
+    const startTime = Date.now();
+    const slot = this.freeslots.shift();
+    this.promises[slot] = fn()
+      .then(() => {
+        delete this.promises[slot];
+        this.freeslots.push(slot);
+        cb(Date.now() - startTime);
+      });
   }
 
   async done() {
@@ -159,7 +170,32 @@ if (require.main === module) {
     return et;
   }
 
+  const executor = process.argv.length > 3 ? useTimedXq : main;
+
+  async function useTimedXq() {
+    const ap = new AsyncPool(10);
+
+    const start = Date.now();
+    // execute a total of N
+    while (n > 0) {
+      // computer wait time for each of the async functions
+      const timeToWait = Math.floor(Math.random() * (maxTime - minTime)) + minTime;
+
+      const fn = () => new Promise(resolve => setTimeout(resolve, timeToWait));
+
+      await ap.timedXq(fn, (et) => totalTime += et);
+      n -= 1;
+    }
+
+    await ap.done();
+
+    // calculate the elapsed time for all to complete.
+    const et = Date.now() - start;
+    return et;
+  }
+
   // eslint-disable-next-line no-console
-  main().then(et => console.log(`executed ${N} timeouts totaling ${totalTime}ms in ${et}ms`));
+  executor().then(et => console.log(`executed ${N} timeouts totaling ${totalTime}ms in ${et}ms`));
+
 
 }
