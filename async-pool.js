@@ -145,7 +145,7 @@ if (require.main === module) {
       // compute wait time for each of the async functions
       const timeToWait = Math.floor(Math.random() * (maxTime - minTime)) + minTime;
 
-      const fn = () => new Promise(resolve => setTimeout(resolve, timeToWait));
+      const fn = async () => timeout(timeToWait, timeToWait);
 
       await ap.timedXq(fn, (et) => totalTime += et);
       n -= 1;
