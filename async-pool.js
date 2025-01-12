@@ -1,62 +1,21 @@
 'use strict';
 
 //
-// async pool factory and class implementations
+// async pool class implementation
 //
+// each instance is a fixed-size pool for executing async functions, allowing
+// parallel execution up to the pool size. because of the nature of node, this
+// is not useful for CPU-bound functions; it is intended to allow multiple
+// async activities to proceed in parallel. the main benefit to this, versus
+// using using Promise.all() is that it does not wait for all promises to
+// resolve before starting another batch of executions - it starts executing a
+// new function as soon as one completes. the primary benefit compared with
+// Promise.race() is that it handles limiting the number of simultaneous
+// activities to a fixed number. The primary negative is that the return value
+// from the async functions is not available to the caller.
+//
+const timeout = require('node:timers/promises').setTimeout;
 
-/*
-random data:
-total requests: 128931
-stop - start: {"rss":1359011840,"heapTotal":1348739072,"heapUsed":286737472,"external":2460311,"arrayBuffers":1443463}
-final - start: {"rss":270696448,"heapTotal":186155008,"heapUsed":33806888,"external":-4128,"arrayBuffers":-7108}
-child process exited with code null
- */
-
-/**
- * return a function that will execute up to the specified
- * number of async functions simultaneously.
- *
- * @param {integer} n the number of simultaneous functions that
- * can be active
- * @returns {function} a function that takes a promise-returning
- * function as a parameter.
- */
-
-function asyncPoolFactory(n) {
-  // these are the xq "instances" that have not settled
-  const promises = Array(n);
-  // these indexes (in promises) are available for use.
-  const freeslots = [...promises.keys()];
-
-  // execute fn
-  async function xq(fn) {
-    // if there are no free slots, wait for one to open.
-    if (!freeslots.length) {
-      await Promise.race(promises);
-    }
-    // get the first free slot and use it for the function's promise
-    const slot = freeslots.shift();
-    promises[slot] = fn()
-      .then(r => {
-        // clear the promise and add that slot to the free slots list. this leaves
-        // a hole in the promises list but it will be filled in when that slot is
-        // reused.
-        delete promises[slot];
-        freeslots.push(slot);
-        return r;
-      });
-  }
-
-  xq.promises = promises;
-  xq.freeslots = freeslots;
-  // provide a function the user can call to wait on any unsettled promises
-  // after they have exhausted their need to call xq(). this would be used when
-  // there is a list of tasks to complete and the end of it has been reached.
-  xq.done = async () => Promise.all(promises);
-
-  // return the executor
-  return xq;
-}
 
 class AsyncPool {
   constructor(n) {
@@ -94,22 +53,23 @@ class AsyncPool {
       await Promise.race(this.promises);
     }
 
-    const startTime = Date.now();
     const slot = this.freeslots.shift();
+    const startTime = Date.now();
     this.promises[slot] = fn()
       .then(() => {
+        cb(Date.now() - startTime);
         delete this.promises[slot];
         this.freeslots.push(slot);
-        cb(Date.now() - startTime);
       });
   }
+
 
   async done() {
     return Promise.all(this.promises);
   }
 }
 
-module.exports = {asyncPoolFactory, AsyncPool};
+module.exports = {AsyncPool};
 
 //
 // how to use it
@@ -135,11 +95,9 @@ if (require.main === module) {
   // const maxTime = 1500;
   const minTime = 1000;
   const maxTime = 1000;
+
   async function main() {
     const done = [];
-    // create an async pool of up to 10 simultaneous functions. xq is
-    // the executor - pass async functions to it.
-    const xq = asyncPoolFactory(10);
 
     const ap = new AsyncPool(10);
 
@@ -150,27 +108,33 @@ if (require.main === module) {
       const thisTime = Date.now();
       const timeToWait = Math.floor(Math.random() * (maxTime - minTime)) + minTime;
 
-      const p = new Promise(resolve => {
-        setTimeout(function() {
-          // aggregate total time spent
-          totalTime += Date.now() - thisTime;
-          resolve();
-        }, timeToWait);
-      });
+      const p = timeout(timeToWait, timeToWait)
+        .then(() => totalTime += Date.now() - thisTime);
+
+      //const f = () => p.then(r => console.log(r));
       const f = () => p;
-      //done.push(await (useFactory ? xq(f) : ap.xq(f)));
-      await (useFactory ? xq(f) : ap.xq(f));
+      await ap.xq(f);
       n -= 1;
     }
 
     // wait on all to complete
-    await (useFactory ? xq.done() : ap.done());
+    await ap.done();
     // calculate the elapsed time for all to complete.
     const et = Date.now() - start;
     return et;
   }
 
-  const executor = process.argv.length > 3 ? useTimedXq : main;
+  let executor = main;
+
+  if (process.argv[2] === undefined) {
+    executor = main;
+  } else if (process.argv[2] === '-t') {
+    executor = useTimedXq;
+  } else if (process.argv[2] === '-f') {
+    executor = fubar;
+  } else {
+    console.error('invalid argument', process.argv[2]);
+  }
 
   async function useTimedXq() {
     const ap = new AsyncPool(10);
@@ -178,7 +142,7 @@ if (require.main === module) {
     const start = Date.now();
     // execute a total of N
     while (n > 0) {
-      // computer wait time for each of the async functions
+      // compute wait time for each of the async functions
       const timeToWait = Math.floor(Math.random() * (maxTime - minTime)) + minTime;
 
       const fn = () => new Promise(resolve => setTimeout(resolve, timeToWait));
@@ -192,6 +156,16 @@ if (require.main === module) {
     // calculate the elapsed time for all to complete.
     const et = Date.now() - start;
     return et;
+  }
+
+  async function fubar() {
+    const t1 = timeout(1000, 1);
+    const t2 = timeout(2000, 2);
+    const t3 = timeout(3000, 3);
+    const promises = [t1, t2, t3];
+    console.log(await Promise.race(promises));
+    console.log(await Promise.race(promises));
+    console.log(await Promise.race(promises));
   }
 
   // eslint-disable-next-line no-console
